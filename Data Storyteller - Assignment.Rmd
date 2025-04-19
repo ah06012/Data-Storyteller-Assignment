@@ -1,0 +1,486 @@
+---
+title: "Data Storyteller Assignment"
+author: "Ahmed Ahmed"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("reshape2")
+library("ggplot2")
+library("lemon")
+library("stringr")
+```
+
+
+## Upload data & quick check
+
+Upload mapping file and tidy up data table
+
+```{r}
+mappings <- read.csv("Dummy_data_var_mapping.csv")
+head(mappings)
+colnames(mappings)[1] <- "Var.Name"
+mappings <- mappings[mappings$Var.Name!="",]
+head(mappings)
+```
+
+
+Upload dummy survey data and tidy up content
+
+```{r}
+data <- read.csv("Dummy_survey_data.csv")
+head(data)
+nrow(data)
+colnames(data) <- mappings[,2]
+head(data)
+View(data)
+```
+To check validity of data, we can check that the row sums of platform 1-4 columns always add up to less than 4. Since in the survey you can only choose a maximum of 3
+platform.
+
+```{r}
+check.plat <- apply((data[,c(10:21)]),FUN =sum,MARGIN=1)
+all(check.plat<4)
+
+```
+
+
+## How do the featured platform differ in usage?
+
+We will illustrate the answer to this question using a bar plot as shown below
+
+```{r , fig.width=30, fig.height=10}
+plat.data <- data[,c(10:21)]
+head(plat.data)
+labels <- c("1-Pri","1-Sec","1-Thi","2-Pri",
+            "2-Sec","P2-Thi","3-Pri","3-Sec","3-Thi",
+            "4-Pri","4-Sec","4-Thi")
+barplot(apply(plat.data,2,sum),col="blue",names.arg = labels,ylim = c(0,3500),cex.names = 1.22,ylab = "Number of users",xlab="Platforms")
+```
+
+We can see that respondent primarily used Platform 1 and 4. Platform 3 had the lowest usage, with relatively fewer respondents using it in any capacity.
+
+## How does the profile of Platform 1 primary users compare to that of Platform 3 primary users?
+
+First we obtain data for platform 1 primary users from our data table.
+
+```{r}
+head(data)
+plat.1.primary <-  data[,c(-(11:15),-(16:21))]
+head(plat.1.primary)
+```
+
+Next we eliminate respondents that did not select platform 1 primary
+
+```{r}
+plat.1.primary.selected <- plat.1.primary[plat.1.primary$`Q10-Platform 1-Primary`!=0 ,]
+View(plat.1.primary.selected)
+head(plat.1.primary.selected)
+```
+
+
+Aggregate columns based on platform 1 primary
+
+
+```{r}
+plat.1.summary<- aggregate(plat.1.primary.selected[,-c(1,2,3,9,10)],by=list(plat.1.primary.selected$`Q10-Platform 1-Primary`),FUN=sum)
+head(plat.1.summary)
+colnames(plat.1.summary)[1] <- "Platfrom.1.Primary"
+plat.1.summary$Platfrom.1.Primary <- toString(plat.1.summary$Platfrom.1.Primary)
+plat.1.summary$Platfrom.1.Primary <- c("Platform.1.Primary")
+head(plat.1.summary)
+plat.1.summary.plot<- melt(plat.1.summary,id.vars="Platfrom.1.Primary")
+```
+
+Finally, we plot our data
+
+```{r}
+ggplot(data = plat.1.summary.plot, aes( x = variable, y = value) ) +    # print bar chart
+  geom_bar( stat = 'identity',position = position_dodge(width = 100))+
+ #geom_col( stat = 'identity', width =0.8, position = position_dodge(0.8) )+
+  #theme(axis.text.x = element_text(margin = unit(c(0, 0, 0, 0), "mm"), angle = 90))+
+  coord_flip()+
+  scale_x_discrete("")+
+  labs(y="Number of users",title="Platform 1 primary users",fill="")
+```
+
+Similarly, we first obtain data for platform 3 primary users from our data table.
+
+```{r}
+head(data)
+plat.3.primary <-  data[,c(-(10:15),-(17:21))]
+head(plat.3.primary)
+```
+
+Next we eliminate respondents that did not select platform 3 
+
+```{r}
+plat.3.primary.selected <- plat.3.primary[plat.3.primary$`Q10-Platform 3-Primary`!=0 ,]
+View(plat.3.primary.selected)
+head(plat.3.primary.selected)
+```
+
+
+Aggregate columns based on platform 3 primary
+
+
+```{r}
+plat.3.summary<- aggregate(plat.3.primary.selected[,-c(1,2,3,9,10)],by=list(plat.3.primary.selected$`Q10-Platform 3-Primary`),FUN=sum)
+head(plat.3.summary)
+colnames(plat.3.summary)[1] <- "Platfrom.3.Primary"
+plat.3.summary$Platfrom.3.Primary <- toString(plat.3.summary$Platfrom.3.Primary)
+plat.3.summary$Platfrom.3.Primary <- c("Platform.3.Primary")
+head(plat.3.summary)
+plat.3.summary.plot<- melt(plat.3.summary,id.vars="Platfrom.3.Primary")
+```
+
+Finally, we plot our data
+
+```{r}
+ggplot(data = plat.3.summary.plot, aes( x = variable, y = value) ) +    # print bar chart
+  geom_bar( stat = 'identity',position = position_dodge(width = 100))+
+ #geom_col( stat = 'identity', width =0.8, position = position_dodge(0.8) )+
+  #theme(axis.text.x = element_text(margin = unit(c(0, 0, 0, 0), "mm"), angle = 90))+
+  coord_flip()+
+  scale_x_discrete("")+
+  labs(y="Number of users",title="Platform 3 primary users",fill="")
+```
+
+Inspecting both plots, we note that both platform 1 and 3 primary users are most likely to be in role 1.However, in contrast Platform 1 primary users opted for Language 1 as their most used language whereas platform 3 users opted for language 3.
+
+
+### Involvement in development and company size
+
+Define a new data table
+
+```{r}
+Dev.comp.size.data <- data[,c(1:3,10:21)]
+head(Dev.comp.size.data)
+```
+
+Reshaping the data to convert into a long format based on the platforms we have
+
+```{r}
+Dev.comp.size.data.stacked <- melt( data = Dev.comp.size.data , id.vars = c('ResponseID','Q2 Involvement in development (types 81 to 89)',
+                                       'Q3 Company size (ranges, from 1 smallest to 8 largest)'))
+head(Dev.comp.size.data.stacked)
+View(Dev.comp.size.data.stacked)
+```
+
+Now reshaping again, but this time into aggregated format based on development involvement type. Note that I had to rename columns in the table since the space was causing error for the dcast() function.
+
+```{r}
+colnames(Dev.comp.size.data.stacked)[2:3] <- c("Dev.type","Comp.size")
+Dev.type.aggregated <- dcast( Dev.comp.size.data.stacked,Dev.type~variable ,  value.var = 'value',  fun.aggregate = sum)
+Comp.size.aggregated <- dcast( Dev.comp.size.data.stacked,Comp.size~variable ,  value.var = 'value',  fun.aggregate = sum)
+head(Dev.type.aggregated)
+head(Comp.size.aggregated)
+```
+
+To obtain the total usage for each platform, we sum the rows as shown below
+
+```{r}
+Plat.1 <- rowSums(Dev.type.aggregated[,2:4])
+Plat.1 <- rowSums(Comp.size.aggregated[,2:4])
+Plat.2 <- rowSums(Dev.type.aggregated[,5:7])
+Plat.2 <- rowSums(Comp.size.aggregated[,5:7])
+Plat.3 <- rowSums(Dev.type.aggregated[,8:10])
+Plat.3 <- rowSums(Comp.size.aggregated[,8:10])
+Plat.4 <- rowSums(Dev.type.aggregated[,11:13])
+Plat.4 <- rowSums(Comp.size.aggregated[,11:13])
+```
+
+We then design 2 new data frames with the involvement in development type column in one, and company size column for the other.The total usage per platform columns are also added to each data frame
+
+```{r}
+Dev.type.total.usage <- data.frame(Dev.type.aggregated$Dev.type,Plat.1,Plat.2,Plat.3,Plat.4)
+Comp.size.total.usage <- data.frame(Comp.size.aggregated$Comp.size,Plat.1,Plat.2,Plat.3,Plat.4)
+colnames(Dev.type.total.usage)[1] <- "Dev.type"
+colnames(Comp.size.total.usage)[1] <- "Comp.size"
+head(Dev.type.total.usage)
+head(Comp.size.total.usage)
+Dev.type.total.usage.stacked <- melt( data = Dev.type.total.usage , id.vars ="Dev.type")
+head(Dev.type.total.usage.stacked)
+Comp.size.total.usage.stacked <- melt( data = Comp.size.total.usage , id.vars ="Comp.size")
+head(Comp.size.total.usage.stacked)
+```
+
+Finally, we are ready to make our plots. First, we plot the involvement in development type bar chart
+
+```{r}
+ggplot(data = Dev.type.total.usage.stacked, aes( x = factor( Dev.type ), y = value, fill = variable ) ) +    # print bar chart
+  geom_bar( stat = 'identity', position = 'dodge' )+
+  scale_x_discrete("")+
+  labs(y="Number of users",title="Type of development involvement",fill="")
+```
+
+
+We note that most respondent were involved in type 89 development, particularly with platform 1 and 4 users.
+
+Then make our the second plot, for the company size bar chart
+
+```{r}
+ggplot(data =subset(Comp.size.total.usage.stacked,!is.na(Comp.size)), aes( x = factor( Comp.size ), y = value, fill = variable )) +    # print bar chart
+  geom_bar( stat = 'identity', position = 'dodge' )+
+ scale_x_discrete("")+
+  labs(y="Number of users",title="Company size",fill="")
+```
+
+Majority of platform users are based in small to mid-sized companies, ranging from 1-5 with platform 1 constituting the largest share of platform usage in the respective companies. We also note that for large companies size 7-8, the number of platform users is considerably less.
+
+### Investigating respondent's role data
+
+Respondents had 5 roles to choose from. It appears that respondents can choose more than 1 role at a time.Extracting the appropriate
+columns we have
+
+```{r}
+role.data <-data[,c(1,4:8,10:21)]
+head(role.data)
+```
+
+Reshaping the data in long format collapsing the different platform columns as shown below
+
+```{r}
+role.data.long <- melt(role.data,id.vars=colnames(role.data)[1:6])
+head(role.data.long)
+View(role.data.long)
+```
+
+To obtain respondent's data that selected "yes",which is 1, for a role and and a platform usage type e.g. Platfrom 1-Primary. We eliminate rows with 0 entry in the value column above i.e. entries where a platform usage has been selected.
+
+```{r}
+role.data.long.selected.plat <- role.data.long[role.data.long$value!=0,]
+role.data.long.selected.plat <- melt(role.data.long.selected.plat,id.vars=c("ResponseID","variable","value"))
+head(role.data.long.selected.plat)
+colnames(role.data.long.selected.plat)[2:3]=c("Plat.usage","Plat.selected")
+View(role.data.long.selected.plat)
+head(role.data.long.selected.plat)
+```
+
+Now we eliminate the roles not selected, so we end up with selected platforms and roles.
+
+```{r}
+role.data.long.selected.all  <- role.data.long.selected.plat[role.data.long.selected.plat$value!=0,]
+View(role.data.long.selected.all)
+role.data.wide <- dcast(role.data.long.selected.all, variable~Plat.usage ,  value.var = 'value',  fun.aggregate = sum)
+View(role.data.wide)
+head(role.data.wide)
+```
+
+Expressing the data table in long format ready for plotting
+
+```{r}
+role.data.barchart <- melt(role.data.wide,id.vars="variable")
+View(role.data.barchart)
+```
+
+Making changes to column names and plotting, we have
+
+```{r}
+colnames(role.data.barchart)=c("Roles","variable","value")
+head(role.data.barchart)
+ggplot(data = role.data.barchart, aes( x =Roles, y = value, fill = variable ) ) +
+  geom_bar( stat = 'identity', position = 'dodge' )+
+  scale_x_discrete("")+
+  labs(y="Number of users",title="Platform usage patterns in differnt roles",fill="")
+  #facet_rep_grid(~ variable,repeat.tick.labels = T)
+#ggplot(data=role.data.stacked,aes(x=factor(value),fill=variable))+
+  #(stat="count")+
+  #facet_wrap(~ variable,scales = "free_y")+
+
+```
+
+
+
+There is a clear pattern across all the roles, whereby users spend most of their time working with platform 1 or 4. We also note, that there is a drop in the number of platform users in roles 3 and 5.
+
+### Investigating app type data
+
+Respondents had 7 apps types to choose from.Extracting the appropriate columns we have
+
+```{r}
+apps.data <-data[,c(1,10:21,22:28)]
+head(apps.data)
+```
+Reshaping the data in long format collapsing the different platform columns as shown below
+
+```{r}
+apps.data.long <- melt(apps.data,id.vars=colnames(apps.data)[c(1,14:20)])
+head(apps.data.long)
+```
+
+We eliminate rows with 0 entry in the value column above i.e. entries where a platform usage has been selected.
+
+```{r}
+apps.data.long.selected.plat <- apps.data.long[role.data.long$value!=0,]
+apps.data.long.selected.plat <- melt(apps.data.long.selected.plat,id.vars=c("ResponseID","variable","value"))
+colnames(apps.data.long.selected.plat)[2:3]=c("Plat.usage","Plat.selected")
+View(apps.data.long.selected.plat)
+head(apps.data.long.selected.plat)
+```
+
+Now we eliminate apps not selected, so we end up with selected platforms and apps.
+
+```{r}
+apps.data.long.selected.all  <- apps.data.long.selected.plat[apps.data.long.selected.plat$value!=0,]
+View(apps.data.long.selected.all)
+apps.data.wide <- dcast(apps.data.long.selected.all, variable~Plat.usage ,  value.var = 'value',  fun.aggregate = sum)
+View(apps.data.wide)
+```
+
+Expressing the data table in long format ready for plotting
+
+```{r}
+apps.data.barchart <- melt(apps.data.wide,id.vars="variable")
+View(apps.data.barchart)
+```
+
+Applying changes to column names and plotting, we have
+
+```{r}
+colnames(apps.data.barchart)=c("Apps","variable","value")
+head(apps.data.barchart)
+ggplot(data = apps.data.barchart, aes( x =Apps, y = value, fill = variable ) ) +
+  geom_col( stat = 'identity', width =0.8, position = position_dodge(0.8) )+
+  scale_x_discrete("",guide = guide_axis(n.dodge=2))+
+  labs(y="Number of users",title="Applications used on different platforms",fill="")
+  #facet_rep_grid(~ variable,repeat.tick.labels = T)
+  #ggplot(data=role.data.stacked,aes(x=factor(value),fill=variable))+
+  #(stat="count")+
+  #facet_wrap(~ variable,scales = "free_y")+
+
+```
+Again, similar pattern to roles data with users spending most of their time on platform 1 and 4 across all the app types.In particular, these primary users of platform 1 and 4 will most likely choose app type 1 or 7.  
+
+### Investigating Tools data
+
+Respondents had 6 tool types to choose from.Extracting the appropriate columns we have
+
+```{r}
+tools.data <-data[,c(1,10:21,29:34)]
+head(tools.data)
+```
+Reshaping the data in long format collapsing the different platform columns as shown below
+
+```{r}
+tools.data.long <- melt(tools.data,id.vars=colnames(tools.data)[c(1,14:19)])
+head(tools.data.long)
+```
+
+We eliminate rows with 0 entry in the value column above i.e. entries where a platform usage has been selected.
+
+```{r}
+tools.data.long.selected.plat <- tools.data.long[tools.data.long$value!=0,]
+tools.data.long.selected.plat <- melt(tools.data.long.selected.plat,id.vars=c("ResponseID","variable","value"))
+colnames(tools.data.long.selected.plat)[2:3]=c("Plat.usage","Plat.selected")
+View(tools.data.long.selected.plat)
+head(tools.data.long.selected.plat)
+```
+
+Now we eliminate tools not selected, so we end up with selected platforms and tools.
+
+```{r}
+tools.data.long.selected.all  <- tools.data.long.selected.plat[tools.data.long.selected.plat$value!=0,]
+View(tools.data.long.selected.all)
+tools.data.wide <- dcast(tools.data.long.selected.all, variable~Plat.usage ,  value.var = 'value',  fun.aggregate = sum)
+View(tools.data.wide)
+```
+
+Express data table in long format ready for plotting
+
+```{r}
+tools.data.barchart <- melt(tools.data.wide,id.vars="variable")
+View(tools.data.barchart)
+```
+
+Applying changes to column names and plotting, we have
+
+```{r}
+colnames(tools.data.barchart)=c("Tools","variable","value")
+head(tools.data.barchart)
+ggplot(data = tools.data.barchart, aes( x =Tools, y = value, fill = variable ) ) +
+  geom_col( stat = 'identity', width =0.8, position = position_dodge(0.8) )+
+  scale_x_discrete("",guide = guide_axis(n.dodge=2))+
+  labs(y="Number of users",title="Tools used on different platforms",fill="")
+  #facet_rep_grid(~ variable,repeat.tick.labels = T)
+  #ggplot(data=role.data.stacked,aes(x=factor(value),fill=variable))+
+  #(stat="count")+
+  #facet_wrap(~ variable,scales = "free_y")+
+
+```
+
+This recurring pattern of users spending most of their time on platform 1 and 4 across different categories continue.However, in this case these primary users of platform 1 and 4 will most likely choose tool type 1. 
+
+### Investigating Language data
+
+Respondents had 12 language options to choose from.Extracting the appropriate columns we have
+
+```{r}
+language.data <-data[,c(1,10:21,35:46)]
+head(language.data)
+```
+Reshaping the data in long format collapsing the different platform columns as shown below
+
+```{r}
+language.data.long <- melt(language.data,id.vars=colnames(language.data)[c(1,14:25)])
+head(language.data.long)
+```
+
+We eliminate rows with 0 entry in the value column above i.e. entries where a platform usage has been selected.
+
+```{r}
+language.data.long.selected.plat <- language.data.long[role.data.long$value!=0,]
+language.data.long.selected.plat <- melt(language.data.long.selected.plat,id.vars=c("ResponseID","variable","value"))
+colnames(language.data.long.selected.plat)[2:3]=c("Plat.usage","Plat.selected")
+View(language.data.long.selected.plat)
+head(language.data.long.selected.plat)
+```
+
+Now we eliminate language options not selected, so we end up with selected platforms and language options.
+
+```{r}
+language.data.long.selected.all  <- language.data.long.selected.plat[language.data.long.selected.plat$value!=0,]
+View(language.data.long.selected.all)
+language.data.wide <- dcast(language.data.long.selected.all, variable~Plat.usage ,  value.var = 'value',  fun.aggregate = sum)
+View(language.data.wide)
+```
+
+Express data table in long format ready for plotting
+
+```{r}
+language.data.barchart <- melt(language.data.wide,id.vars="variable")
+View(language.data.barchart)
+```
+
+Applying changes to column names and plotting, we have
+
+```{r}
+colnames(language.data.barchart)=c("Language","variable","value")
+head(language.data.barchart)
+
+
+language.data.barchart$Language <- c(str_sub(language.data.barchart$Language[c(T,F)],13,-5),str_sub(language.data.barchart$Language[c(F,T)],13,-7))
+
+
+ggplot(data =language.data.barchart, aes( x =Language, y = value, fill = variable ) ) +
+  geom_col( stat = 'identity', width =0.8, position = position_dodge(0.8) )+
+  scale_x_discrete("",guide = guide_axis(n.dodge=2))+
+  labs(y="Number of users",title="Languages used on different platforms",fill="")
+
+
+
+#ggplot(data =language.data.barchart, aes( x =Language, y = value,fill=variable)) +
+  #geom_col(stat = 'identity')+
+  #facet_wrap(~ variable)+
+  #theme(axis.text.x = element_text(margin = unit(c(0, 0, 0, 0), "mm"), angle = 90)) 
+  #labs(title="Platform usage by different applications",fill="")
+  #facet_rep_grid(~ variable,repeat.tick.labels = T)
+#ggplot(data=role.data.stacked,aes(x=factor(value),fill=variable))+
+  #(stat="count")+
+  #facet_wrap(~ variable,scales = "free_y")+
+
+```
+
+Here, we stop seeing the pattern witnessed in the previous sections. Only one platform ,not two, dominates the number of user in each category. Also, for one category, most users working primarily with language 3 spent most of their time on platform 2 (unlike before where platform 1 and 4 dominated every category).Most notable features for languages, is the high number of users working with language 1. Either, as the main language or secondary language in development.
